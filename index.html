@@ -2,13 +2,14 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <title>Cerca targa in FSPark.xlsx</title>
+  <title>Accedi alla ricerca targhe</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
-      max-width: 700px;
+      max-width: 600px;
+      text-align: center;
     }
     input, button {
       padding: 8px;
@@ -25,6 +26,14 @@
     button:hover {
       background: #004c99;
     }
+    #passwordForm, #searchPage {
+      display: none;
+    }
+    #errorPass {
+      color: #721c24;
+      margin: 10px 0;
+      display: none;
+    }
     #result {
       margin-top: 10px;
       padding: 10px 12px;
@@ -35,27 +44,58 @@
     .not-found { background: #f8d7da; color: #721c24; }
     .error { background: #fff3cd; color: #856404; }
     .search-info { font-size: 0.9em; color: #666; margin-bottom: 10px; }
-    .details { font-size: 0.9em; margin-top: 5px; }
-    .highlight { background: #ffeb3b; padding: 0 2px; }
   </style>
 </head>
 <body>
-  <h1>Cerca targa o testo in FSPark.xlsx</h1>
 
-  <p class="search-info">
-    Inserisci una targa o una parte di testo (es. "AB123", "ROSSO", ecc.).<br>
-    La ricerca è parziale, case‑insensitive e avviene in tutti i fogli e tutte le celle.
-  </p>
+  <!-- SCHERMATA PASSWORD -->
+  <div id="passwordForm">
+    <h1>Accedi alla ricerca targhe</h1>
+    <p>Inserisci la password per accedere</p>
+    <input id="passInput" type="password" placeholder="Password" />
+    <div id="errorPass">Password errata</div>
+    <button onclick="checkPassword()">Accedi</button>
+  </div>
 
-  <label>Testo da cercare (parziale):</label><br/>
-  <input id="searchInput" type="text" placeholder="AB123 o ROSSO" />
+  <!-- PAGINA DI RICERCA -->
+  <div id="searchPage" style="display: none;">
+    <h1>Cerca targa o testo in GRANDI STAZIONI BARI</h1>
 
-  <br/>
-  <button onclick="cercaTesto()">Cerca nel file</button>
+    <p class="search-info">
+      Inserisci una targa o una parte di testo (es. "AB123", "COGNOME", ecc.).<br>
+      La ricerca è parziale, case‑insensitive e avviene in tutti i fogli e tutte le celle.
+    </p>
 
-  <div id="result"></div>
+    <label>Testo da cercare (anche parziale):</label><br/>
+    <input id="searchInput" type="text" placeholder="AB123 o COGNOME" />
+
+    <br/>
+    <button onclick="cercaTesto()">Cerca nel file</button>
+
+    <div id="result"></div>
+  </div>
 
   <script>
+    const PASSWORD_CORRETTA = "grandistazionibari";
+
+    // Alla apertura, mostra solo il form password
+    window.onload = function() {
+      document.getElementById("passwordForm").style.display = "block";
+      document.getElementById("searchPage").style.display = "none";
+    };
+
+    function checkPassword() {
+      const pass = document.getElementById("passInput").value.trim();
+      const errorEl = document.getElementById("errorPass");
+
+      if (pass === PASSWORD_CORRETTA) {
+        document.getElementById("passwordForm").style.display = "none";
+        document.getElementById("searchPage").style.display = "block";
+      } else {
+        errorEl.style.display = "block";
+      }
+    }
+
     // Usa il file locale nel repo (servito da GitHub Pages)
     const EXCEL_URL = "FSPark.xlsx";
 
@@ -116,7 +156,6 @@
 
           resultEl.textContent = msg;
 
-          // se vuoi, puoi loggare tutte le celle trovate in console
           console.log("Tutte le celle trovate:", results);
 
         } else {
