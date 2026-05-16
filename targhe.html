@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cerca targa in FSPark.xlsx</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      max-width: 600px;
+    }
+    input, button {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+    }
+    button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #004c99;
+    }
+    #result {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .found { background: #d4edda; color: #155724; }
+    .not-found { background: #f8d7da; color: #721c24; }
+    .error { background: #fff3cd; color: #856404; }
+    .search-info { font-size: 0.9em; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Cerca targa o testo in FSPark.xlsx</h1>
+
+  <p class="search-info">
+    Inserisci una targa o una parte di testo (es. "AB123", "ROSSO", ecc.).<br>
+    La ricerca è parziale e insensibile a maiuscole/minuscole.
+  </p>
+
+  <label>Testo da cercare (parziale):</label><br/>
+  <input id="searchInput" type="text" placeholder="AB123 o ROSSO" />
+
+  <br/>
+  <button onclick="cercaTesto()">Cerca nel file cloud</button>
+
+  <div id="result"></div>
+
+  <script>
+    // URL fisso del file Excel su GitHub (raw)
+    const EXCEL_URL =
+      "https://github.com/alexdavy75/targhe/raw/refs/heads/main/FSPark.xlsx";
+
+    async function cercaTesto() {
+      const resultEl = document.getElementById("result");
+      resultEl.className = "";
+      resultEl.textContent = "Caricamento file e ricerca in corso...";
+
+      const searchText = document.getElementById("searchInput").value.trim().toUpperCase();
+
+      if (!searchText) {
+        resultEl.className = "error";
+        resultEl.textContent = "Manca il testo da cercare.";
+        return;
+      }
+
+      try {
+        // Carica il file Excel da GitHub
+        const res = await fetch(EXCEL_URL);
+        if (!res.ok) throw new Error("Errore download file Excel: " + res.status);
+
+        const data = await res.arrayBuffer();
+        const wb = XLSX.read(data, { type: "array" });
+
+        let found = false;
+        let sheetFound = null;
+
+        wb.SheetNames.forEach(sheetName => {
+          if (found) return;
+          const ws = wb.Sheets[sheetName];
+
+          for (const cellRef in ws) {
+            if (cellRef[0] === "!") continue; // ignora metadati
+            const cell = ws[cellRef];
+            if (!cell || cell.v === undefined) continue;
+
+            const cellText = (cell.w || cell.v).toString().toUpperCase();
+            if (cellText.includes(searchText)) {
+              found = true;
+              sheetFound = sheetName;
+              return;
+            }
+          }
+        });
+
+        if (found) {
+          resultEl.className = "found";
+          resultEl.textContent =
+            `✅ TROVATO: il testo "${searchText}" appare in almeno una cella del foglio "${sheetFound}".`;
+        } else {
+          resultEl.className = "not-found";
+          resultEl.textContent =
+            `❌ NON trovata nessuna cella con "${searchText}" in nessun foglio.`;
+        }
+      } catch (err) {
+        resultEl.className = "error";
+        resultEl.textContent = "Errore: " + err.message;
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
