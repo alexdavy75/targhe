@@ -8,7 +8,7 @@
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
-      max-width: 600px;
+      max-width: 700px;
     }
     input, button {
       padding: 8px;
@@ -27,13 +27,16 @@
     }
     #result {
       margin-top: 10px;
-      padding: 10px;
+      padding: 10px 12px;
       border-radius: 5px;
+      white-space: pre-line;
     }
     .found { background: #d4edda; color: #155724; }
     .not-found { background: #f8d7da; color: #721c24; }
     .error { background: #fff3cd; color: #856404; }
-    .search-info { font-size: 0.9em; color: #666; }
+    .search-info { font-size: 0.9em; color: #666; margin-bottom: 10px; }
+    .details { font-size: 0.9em; margin-top: 5px; }
+    .highlight { background: #ffeb3b; padding: 0 2px; }
   </style>
 </head>
 <body>
@@ -41,21 +44,20 @@
 
   <p class="search-info">
     Inserisci una targa o una parte di testo (es. "AB123", "ROSSO", ecc.).<br>
-    La ricerca è parziale e insensibile a maiuscole/minuscole.
+    La ricerca è parziale, case‑insensitive e avviene in tutti i fogli e tutte le celle.
   </p>
 
   <label>Testo da cercare (parziale):</label><br/>
   <input id="searchInput" type="text" placeholder="AB123 o ROSSO" />
 
   <br/>
-  <button onclick="cercaTesto()">Cerca nel file cloud</button>
+  <button onclick="cercaTesto()">Cerca nel file</button>
 
   <div id="result"></div>
 
   <script>
-    // URL fisso del file Excel su GitHub (raw)
-    const EXCEL_URL =
-      "FSPark.xlsx";
+    // Usa il file locale nel repo (servito da GitHub Pages)
+    const EXCEL_URL = "FSPark.xlsx";
 
     async function cercaTesto() {
       const resultEl = document.getElementById("result");
@@ -71,18 +73,16 @@
       }
 
       try {
-        // Carica il file Excel da GitHub
         const res = await fetch(EXCEL_URL);
         if (!res.ok) throw new Error("Errore download file Excel: " + res.status);
 
         const data = await res.arrayBuffer();
         const wb = XLSX.read(data, { type: "array" });
 
-        let found = false;
-        let sheetFound = null;
+        let matchCount = 0;
+        let results = [];
 
         wb.SheetNames.forEach(sheetName => {
-          if (found) return;
           const ws = wb.Sheets[sheetName];
 
           for (const cellRef in ws) {
@@ -92,21 +92,38 @@
 
             const cellText = (cell.w || cell.v).toString().toUpperCase();
             if (cellText.includes(searchText)) {
-              found = true;
-              sheetFound = sheetName;
-              return;
+              matchCount++;
+              results.push({
+                sheet: sheetName,
+                cellRef,
+                text: cell.w || cell.v,
+              });
             }
           }
         });
 
-        if (found) {
+        if (matchCount > 0) {
           resultEl.className = "found";
-          resultEl.textContent =
-            `✅ TROVATO: il testo "${searchText}" appare in almeno una cella del foglio "${sheetFound}".`;
+          const first = results[0];
+          const last = results[results.length - 1];
+
+          let msg = `✅ TROVATO: ${matchCount} corrispondenza(i) per "${searchText}"\n\n`;
+          msg += `Prima corrispondenza:\n  Foglio: ${first.sheet} → cella ${first.cellRef} → "${first.text}"\n`;
+
+          if (results.length > 1) {
+            msg += `\nUltima corrispondenza:\n  Foglio: ${last.sheet} → cella ${last.cellRef} → "${last.text}"`;
+          }
+
+          resultEl.textContent = msg;
+
+          // se vuoi, puoi loggare tutte le celle trovate in console
+          console.log("Tutte le celle trovate:", results);
+
         } else {
           resultEl.className = "not-found";
           resultEl.textContent =
-            `❌ NON trovata nessuna cella con "${searchText}" in nessun foglio.`;
+            `❌ NON trovata nessuna cella con "${searchText}" in nessun foglio.\n` +
+            `Fogli presenti: ` + wb.SheetNames.join(", ");
         }
       } catch (err) {
         resultEl.className = "error";
